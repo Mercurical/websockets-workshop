@@ -1,0 +1,72 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <div id="wrapper">
+        <!-- Structure is generated automatically by JS -->
+    </div>
+    <button id="socket">Socket</button>
+    <button id="ajax">Ajax</button>
+{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .col-md-1 {
+            margin: 0 0 0 0!important;
+            padding: 0 0 0 0!important;
+        }
+        .col-md-2 {
+            height: 26px;
+            border: solid;
+            margin: 0 0 0 0!important;
+            padding: 0 0 0 0!important;
+        }
+    </style>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+    // Generate grid
+    $(document).ready(function() {
+        var number = 1;
+        for (i = 0; i < 4; i++) {
+            for (j = 0; j < 12; j++) {
+                var wrap = $("<div>", {"class": "col-md-1"});
+                for (k = 0; k < 6; k++) {
+                    var elem = $("<div>", {"number": number++, "class": "col-md-2"});
+                    wrap.append(elem);
+                }
+                $("#wrapper").append(wrap);
+            }
+        }
+    });
+
+    $("#socket").click(function() {
+        $("[number]").each(function() {
+            conn.send('{"event":"example", "number":"' + $(this).attr("number") + '"}');
+        });
+    });
+
+    $("#ajax").click(function() {
+        $("[number]").each(function() {
+            $.ajax({
+                method: "POST",
+                url: "api",
+                data: {"number" : $(this).attr("number")}
+            })
+            .done(function (msg) {
+                $("[number=" + msg.number + "]").css("background-color", msg.color);
+            });
+        });
+    });
+
+    var conn = new WebSocket('ws://10.10.33.134:8080');
+
+    conn.onmessage = function(e) {
+        var response = JSON.parse(e.data);
+        $("[number=" + response.number + "]").css("background-color", response.color);
+    };
+
+
+
+</script>
+{% endblock %}

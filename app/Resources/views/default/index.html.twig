@@ -1,0 +1,132 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <div id="wrapper" class="col-md-12">
+        <div style="font-weight: bold;" id="messagebox" class="col-md-12">
+
+        </div>
+        <div id="main-container" class="col-md-12">
+            <div id="chat" class="col-md-10">
+                {% for message in messages %}
+                    {{ message | raw}}
+                {% endfor %}
+            </div>
+            <div id="users" class="col-md-2">
+                <p><b>Connected IPs:</b></p>
+                <div id="connected-users"></div>
+            </div>
+        </div>
+
+        <div class="col-md-12">
+            <input class="form-control" id="nickname" type="text" placeholder="Nickname">
+        </div>
+        <div class="col-md-12 form-inline">
+            <input class="form-control" id="message" type="text" placeholder="Type a message..."> <button class="btn btn-success" id="send-msg">Send</button>
+        </div>
+    </div>
+{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        #wrapper {
+            margin-top: 10px;
+        }
+        #main-container {
+            margin-bottom: 30px;
+        }
+        #chat {
+            border: double;
+            height: 600px;
+            overflow-y: scroll;
+        }
+        #users {
+            border: double;
+            height: 600px;
+        }
+        #message {
+            width: 500px;
+        }
+        #messagebox {
+            height: 30px;
+        }
+        #nickname {
+            margin-bottom: 30px;
+            width: 10%;
+        }
+    </style>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        $(document).ready(function() {
+            toastr.options = {
+                "closeButton": true,
+                "debug": false,
+                "newestOnTop": false,
+                "progressBar": false,
+                "positionClass": "toast-bottom-right",
+                "preventDuplicates": false,
+                "onclick": null,
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "5000",
+                "extendedTimeOut": "1000",
+                "showEasing": "swing",
+                "hideEasing": "linear",
+                "showMethod": "fadeIn",
+                "hideMethod": "fadeOut"
+            };
+        });
+
+        var conn = new WebSocket('ws://10.10.33.134:8080');
+        conn.onopen = function(e) {
+            $("#messagebox").html('<p>Welcome! You are connected and ready to start chatting!</p>');
+        };
+
+        conn.onerror = function(e) {
+            $("#messagebox").html('<p>Something had gone wrong :/</p>');
+        };
+
+        conn.onmessage = function(e) {
+            var response = JSON.parse(e.data);
+
+            if(response.event == "message") {
+                $("#chat").append(response.data);
+                $("#chat").scrollTop($("#chat")[0].scrollHeight);
+            } else if (response.event == "ips") {
+                $("#connected-users").html(response.data);
+
+                if (response.action == "joined") {
+                    toastr.info("User " + response.ip + " joined the room.", "");
+                } else {
+                    toastr.info("User " + response.ip + " left the room.", "");
+                }
+            } else if (response.event == "error") {
+                alert(response.data);
+                $("#send-msg").prop('disabled', true);
+            }
+        };
+
+        $("#send-msg").click(function() {
+            var nickname = $("#nickname").val();
+            var message = $("#message").val();
+            $("#message").val('');
+
+            if (!message) {
+                return;
+            }
+
+            if (!nickname) {
+                nickname = 'anonymous';
+            }
+
+            conn.send('{"event":"message", "nickname":"' + nickname + '", "msg":"' + message + '"}');
+        });
+
+        $(document).keypress(function(e){
+            if (e.which == 13){
+                $("#send-msg").click();
+            }
+        });
+    </script>
+{% endblock %}
